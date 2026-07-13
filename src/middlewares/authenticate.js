@@ -1,30 +1,17 @@
 import { env } from "../config/env.js";
 
-import { AppError } from "../shared/errors/app-error.js";
-import { verifyAccessToken } from "../shared/utils/jwt.js";
+import { AppError } from "../errors/app-error.js";
+import { verifyAccessToken } from "../utils/jwt.js"; 
 
-export function authenticate(
-  req,
-  res,
-  next,
-) {
-  const token =
-    req.cookies?.[
-      env.AUTH_COOKIE_NAME
-    ];
+export function authenticate(req, res, next) {
+  const token = req.cookies?.[env.AUTH_COOKIE_NAME];
 
   if (!token) {
-    return next(
-      new AppError(
-        "Kamu belum login.",
-        401,
-      ),
-    );
+    return next(new AppError("Kamu belum login.", 401));
   }
 
   try {
-    const payload =
-      verifyAccessToken(token);
+    const payload = verifyAccessToken(token);
 
     req.auth = {
       userId: payload.sub,
@@ -34,11 +21,6 @@ export function authenticate(
 
     next();
   } catch {
-    next(
-      new AppError(
-        "Sesi login tidak valid atau sudah berakhir.",
-        401,
-      ),
-    );
+    next(new AppError("Sesi login tidak valid atau sudah berakhir.", 401));
   }
 }

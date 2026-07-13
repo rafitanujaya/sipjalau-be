@@ -36,3 +36,19 @@ export async function handleLoginStaff(req, res, next) {
         next(error)
     }
 }
+
+export async function handleMe(req, res, next) {
+    try {
+        res.status(200).json({
+            success: true,
+            message: "Data berhasil diambil",
+            data: {
+                staffId: req.auth.sub,
+                username: req.auth.username,
+                role: req.auth.role
+            }
+        })
+    } catch (error) {
+        next(error)
+    }
+}
