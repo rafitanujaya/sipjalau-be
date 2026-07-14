@@ -1,4 +1,5 @@
 import {
+    changeOrderStatus,
   createNewOrder,
   getAvailableOrders,
   getInvoices,
