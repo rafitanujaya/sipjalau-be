@@ -1,6 +1,8 @@
 import {
   createNewOrder,
   getAvailableOrders,
+  getInvoices,
+  getOrderDetail,
 } from "../services/order.service.js";
 
 export async function handleCreateOrder(req, res, next) {
@@ -30,4 +32,48 @@ export async function handleGetOrder(req, res, next) {
       },
     });
   } catch (error) {}
+}
+
+export async function handleGetAllInvoices(req, res, next) {
+  try {
+    const { month, year, search } = req.validated.query;
+
+    const invoices = await getInvoices({
+      month,
+      year,
+      search,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Daftar faktur berhasil diambil.",
+      data: {
+        period: {
+          month,
+          year,
+        },
+        search,
+        total: invoices.length,
+        invoices,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function handleGetOrderById(req, res, next) {
+  try {
+    const order = await getOrderDetail(req.validated.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Detail pesanan berhasil diambil.",
+      data: {
+        order,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
 }

@@ -7,7 +7,14 @@ import {
   findCustomerByFullnameAndPhoneNumber,
 } from "../repositories/product.repository.js";
 import { findServicesByIds } from "../repositories/service.repository.js";
-import { createOrder, createOrderItem, findAvailableOrders } from "../repositories/order.repository.js";
+import {
+  createOrder,
+  createOrderItem,
+  findAvailableOrders,
+  findInvoicesByPeriod,
+  findOrderById,
+  findOrderItemsByOrderId,
+} from "../repositories/order.repository.js";
 
 function generateInvoiceNumber() {
   const now = new Date();
@@ -259,4 +266,149 @@ export async function createNewOrder(input, cashierId) {
 
 export async function getAvailableOrders() {
   return findAvailableOrders();
+}
+
+function createInvoicePeriod(month, year) {
+  const monthString = String(month).padStart(2, "0");
+
+  const startDate = new Date(`${year}-${monthString}-01T00:00:00+07:00`);
+
+  let nextMonth = month + 1;
+  let nextYear = year;
+
+  if (nextMonth === 13) {
+    nextMonth = 1;
+    nextYear += 1;
+  }
+
+  const nextMonthString = String(nextMonth).padStart(2, "0");
+
+  const endDate = new Date(`${nextYear}-${nextMonthString}-01T00:00:00+07:00`);
+
+  return {
+    startDate,
+    endDate,
+  };
+}
+
+export async function getInvoices({ month, year, search }) {
+  const { startDate, endDate } = createInvoicePeriod(month, year);
+
+  const invoices = await findInvoicesByPeriod({
+    startDate,
+    endDate,
+    search,
+  });
+
+  return invoices.map((invoice) => ({
+    orderId: invoice.order_id,
+    invoiceNumber: invoice.invoice_number,
+    customerName: invoice.customer_name,
+    orderDate: invoice.order_date,
+    total: Number(invoice.total),
+  }));
+}
+
+function formatOrderItem(item) {
+  let measurement = null;
+
+  switch (item.pricing_unit) {
+    case "per_kg":
+      measurement = {
+        type: "weight",
+        value: Number(item.weight),
+        unit: "kg",
+      };
+      break;
+
+    case "per_barang":
+      measurement = {
+        type: "quantity",
+        value: item.quantity,
+        unit: "barang",
+      };
+      break;
+
+    case "per_meter":
+      measurement = {
+        type: "length",
+        value: Number(item.length),
+        unit: "meter",
+      };
+      break;
+
+    default:
+      measurement = null;
+  }
+
+  return {
+    id: item.id,
+
+    service: {
+      id: item.service_id,
+      name: item.service_name,
+      itemCategory: item.item_category,
+      itemSize: item.item_size,
+      type: item.service_type,
+      turnaroundType: item.turnaround_type,
+      durationDays: item.duration_days,
+      pricingUnit: item.pricing_unit,
+    },
+
+    weight: item.weight === null ? null : Number(item.weight),
+
+    quantity: item.quantity,
+
+    length: item.length === null ? null : Number(item.length),
+
+    measurement,
+
+    unitPrice: Number(item.unit_price),
+    subtotal: Number(item.subtotal),
+
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
+  };
+}
+
+export async function getOrderDetail(id) {
+  const order = await findOrderById(id);
+
+  if (!order) {
+    throw new AppError("Pesanan tidak ditemukan.", 404);
+  }
+
+  const orderItems = await findOrderItemsByOrderId(id);
+
+  return {
+    id: order.id,
+    invoiceNumber: order.invoice_number,
+    status: order.status,
+    paymentMethod: order.payment_method,
+    paymentStatus: order.payment_status,
+    total: Number(order.total),
+    notes: order.notes,
+
+    receivedAt: order.received_at,
+    estimatedDoneAt: order.estimated_done_at,
+    completedAt: order.completed_at,
+    pickedUpAt: order.picked_up_at,
+    paidAt: order.paid_at,
+    createdAt: order.created_at,
+    updatedAt: order.updated_at,
+
+    customer: {
+      id: order.customer_id,
+      fullname: order.customer_fullname,
+      phoneNumber: order.customer_phone_number,
+    },
+
+    cashier: {
+      id: order.cashier_id,
+      name: order.cashier_name,
+      username: order.cashier_username,
+    },
+
+    items: orderItems.map(formatOrderItem),
+  };
 }

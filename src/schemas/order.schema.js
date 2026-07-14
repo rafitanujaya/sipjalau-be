@@ -42,7 +42,7 @@ export const createOrderSchema = z.object({
       customer: customerSchema,
 
       turnaroundType: z.enum(
-        ["reguler", "ekspress"],
+        ["reguler", "ekspres"],
         {
           message:
             "Jenis pengerjaan harus berupa reguler atau ekspres.",
@@ -115,4 +115,48 @@ export const createOrderSchema = z.object({
         });
       }
     }),
+});
+
+
+export const getInvoicesSchema = z.object({
+  query: z.object({
+    month: z.coerce
+      .number({
+        message: "Bulan wajib diisi.",
+      })
+      .int("Bulan harus berupa bilangan bulat.")
+      .min(1, "Bulan minimal 1.")
+      .max(12, "Bulan maksimal 12."),
+
+    year: z.coerce
+      .number({
+        message: "Tahun wajib diisi.",
+      })
+      .int("Tahun harus berupa bilangan bulat.")
+      .min(2000, "Tahun minimal 2000.")
+      .max(2100, "Tahun maksimal 2100."),
+
+    search: z
+      .string()
+      .trim()
+      .max(
+        150,
+        "Pencarian maksimal 150 karakter.",
+      )
+      .optional()
+      .default(""),
+  }),
+});
+
+
+export const getOrderByIdSchema = z.object({
+  body: z.object({}),
+
+  params: z.object({
+    id: z
+      .string()
+      .uuid("ID pesanan tidak valid."),
+  }),
+
+  query: z.object({}),
 });

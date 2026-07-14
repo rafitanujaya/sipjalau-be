@@ -198,3 +198,140 @@ export async function findAvailableOrders(db = pool) {
     console.timeEnd("findAvailableOrders");
   }
 }
+
+export async function findInvoicesByPeriod(
+  {
+    startDate,
+    endDate,
+    search,
+  },
+  db = pool,
+) {
+  const keyword = `%${search}%`;
+
+  const result = await db.query(
+    `
+      SELECT
+        o.id AS order_id,
+        o.invoice_number,
+        c.fullname AS customer_name,
+        o.created_at AS order_date,
+        o.total
+
+      FROM orders AS o
+
+      INNER JOIN customers AS c
+        ON c.id = o.customer_id
+
+      WHERE o.status = 'sudah_diambil'
+
+        AND o.created_at >= $1
+        AND o.created_at < $2
+
+        AND (
+          $3 = ''
+          OR o.invoice_number ILIKE $4
+          OR c.fullname ILIKE $4
+        )
+
+      ORDER BY o.created_at DESC
+    `,
+    [
+      startDate,
+      endDate,
+      search,
+      keyword,
+    ],
+  );
+
+  return result.rows;
+}
+
+export async function findOrderById(
+  id,
+  db = pool,
+) {
+  const result = await db.query(
+    `
+      SELECT
+        o.id,
+        o.invoice_number,
+        o.status,
+        o.payment_method,
+        o.payment_status,
+        o.total,
+        o.notes,
+        o.received_at,
+        o.estimated_done_at,
+        o.completed_at,
+        o.picked_up_at,
+        o.paid_at,
+        o.created_at,
+        o.updated_at,
+
+        c.id AS customer_id,
+        c.fullname AS customer_fullname,
+        c.phone_number AS customer_phone_number,
+
+        s.id AS cashier_id,
+        s.name AS cashier_name,
+        s.username AS cashier_username
+
+      FROM orders AS o
+
+      INNER JOIN customers AS c
+        ON c.id = o.customer_id
+
+      INNER JOIN staff AS s
+        ON s.id = o.cashier_id
+
+      WHERE o.id = $1
+
+      LIMIT 1
+    `,
+    [id],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function findOrderItemsByOrderId(
+  orderId,
+  db = pool,
+) {
+  const result = await db.query(
+    `
+      SELECT
+        oi.id,
+        oi.order_id,
+        oi.service_id,
+        oi.weight,
+        oi.quantity,
+        oi.length,
+        oi.unit_price,
+        oi.subtotal,
+        oi.created_at,
+        oi.updated_at,
+
+        sv.name AS service_name,
+        sv.item_category,
+        sv.item_size,
+        sv.type AS service_type,
+        sv.turnaround_type,
+        sv.duration_days,
+        sv.pricing_unit
+
+      FROM order_items AS oi
+
+      INNER JOIN services AS sv
+        ON sv.id = oi.service_id
+
+      WHERE oi.order_id = $1
+
+      ORDER BY oi.created_at ASC
+    `,
+    [orderId],
+  );
+
+  return result.rows;
+}
