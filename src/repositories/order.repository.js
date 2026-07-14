@@ -405,3 +405,61 @@ export async function updateOrderStatus(
 
   return result.rows[0] ?? null;
 }
+
+export async function findOrderPaymentById(
+  id,
+  db = pool,
+) {
+  const result = await db.query(
+    `
+      SELECT
+        id,
+        invoice_number,
+        status,
+        payment_method,
+        payment_status,
+        total,
+        paid_at
+      FROM orders
+      WHERE id = $1
+      LIMIT 1
+    `,
+    [id],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function updateOrderPayment(
+  id,
+  paymentMethod,
+  db = pool,
+) {
+  const result = await db.query(
+    `
+      UPDATE orders
+      SET
+        payment_status = 'lunas',
+        payment_method = $2,
+        paid_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING
+        id,
+        invoice_number,
+        status,
+        payment_method,
+        payment_status,
+        total,
+        paid_at,
+        created_at,
+        updated_at
+    `,
+    [
+      id,
+      paymentMethod,
+    ],
+  );
+
+  return result.rows[0] ?? null;
+}

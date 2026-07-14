@@ -178,3 +178,25 @@ export const updateOrderStatusSchema = z.object({
       .uuid("ID pesanan tidak valid."),
   }),
 });
+
+export const updateOrderPaymentSchema = z.object({
+  body: z.object({
+    paymentMethod: z.enum(
+      [
+        "tunai",
+        "qris",
+        "transfer_bank",
+      ],
+      {
+        message:
+          "Metode pembayaran harus berupa tunai, qris, atau transfer_bank.",
+      },
+    ),
+  }),
+
+  params: z.object({
+    id: z
+      .string()
+      .uuid("ID pesanan tidak valid."),
+  }),
+});

@@ -1,5 +1,5 @@
 import {
-    changeOrderStatus,
+  changeOrderStatus,
   createNewOrder,
   getAvailableOrders,
   getInvoices,
@@ -89,6 +89,25 @@ export async function handleUpdateOrderStatus(req, res, next) {
     return res.status(200).json({
       success: true,
       message: "Status pesanan berhasil diperbarui.",
+      data: {
+        order,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function handleUpdateOrderPayment(req, res, next) {
+  try {
+    const order = await payOrder(
+      req.validated.params.id,
+      req.validated.body.paymentMethod,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Pembayaran pesanan berhasil dicatat.",
       data: {
         order,
       },

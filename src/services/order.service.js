@@ -14,7 +14,9 @@ import {
   findInvoicesByPeriod,
   findOrderById,
   findOrderItemsByOrderId,
+  findOrderPaymentById,
   findOrderStatusById,
+  updateOrderPayment,
   updateOrderStatus,
 } from "../repositories/order.repository.js";
 
@@ -416,50 +418,29 @@ export async function getOrderDetail(id) {
 }
 
 const allowedTransitions = {
-  diproses: [
-    "sedang_dicuci",
-  ],
+  diproses: ["sedang_dicuci"],
 
-  sedang_dicuci: [
-    "siap_diambil",
-  ],
+  sedang_dicuci: ["siap_diambil"],
 
-  siap_diambil: [
-    "sudah_diambil",
-  ],
+  siap_diambil: ["sudah_diambil"],
 
   sudah_diambil: [],
 };
 
-export async function changeOrderStatus(
-  orderId,
-  newStatus,
-) {
-  const order =
-    await findOrderStatusById(orderId);
+export async function changeOrderStatus(orderId, newStatus) {
+  const order = await findOrderStatusById(orderId);
 
   if (!order) {
-    throw new AppError(
-      "Pesanan tidak ditemukan.",
-      404,
-    );
+    throw new AppError("Pesanan tidak ditemukan.", 404);
   }
 
   if (order.status === newStatus) {
-    throw new AppError(
-      `Pesanan sudah berstatus ${newStatus}.`,
-      409,
-    );
+    throw new AppError(`Pesanan sudah berstatus ${newStatus}.`, 409);
   }
 
-  const availableTransitions =
-    allowedTransitions[order.status] ?? [];
+  const availableTransitions = allowedTransitions[order.status] ?? [];
 
-  if (
-    !availableTransitions.includes(
-      newStatus,
-    )
-  ) {
+  if (!availableTransitions.includes(newStatus)) {
     throw new AppError(
       `Status pesanan tidak dapat diubah dari ${order.status} menjadi ${newStatus}.`,
       422,
@@ -468,11 +449,9 @@ export async function changeOrderStatus(
 
   const now = new Date();
 
-  let completedAt =
-    order.completed_at;
+  let completedAt = order.completed_at;
 
-  let pickedUpAt =
-    order.picked_up_at;
+  let pickedUpAt = order.picked_up_at;
 
   if (newStatus === "siap_diambil") {
     completedAt = now;
@@ -482,14 +461,54 @@ export async function changeOrderStatus(
     pickedUpAt = now;
   }
 
+  const updatedOrder = await updateOrderStatus(orderId, {
+    status: newStatus,
+    completedAt,
+    pickedUpAt,
+  });
+
+  return {
+    id: updatedOrder.id,
+    invoiceNumber: updatedOrder.invoice_number,
+    status: updatedOrder.status,
+    paymentMethod: updatedOrder.payment_method,
+    paymentStatus: updatedOrder.payment_status,
+    total: Number(updatedOrder.total),
+    receivedAt: updatedOrder.received_at,
+    estimatedDoneAt: updatedOrder.estimated_done_at,
+    completedAt: updatedOrder.completed_at,
+    pickedUpAt: updatedOrder.picked_up_at,
+    paidAt: updatedOrder.paid_at,
+    createdAt: updatedOrder.created_at,
+    updatedAt: updatedOrder.updated_at,
+  };
+}
+
+export async function payOrder(
+  orderId,
+  paymentMethod,
+) {
+  const order =
+    await findOrderPaymentById(orderId);
+
+  if (!order) {
+    throw new AppError(
+      "Pesanan tidak ditemukan.",
+      404,
+    );
+  }
+
+  if (order.payment_status === "lunas") {
+    throw new AppError(
+      "Pesanan sudah dibayar.",
+      409,
+    );
+  }
+
   const updatedOrder =
-    await updateOrderStatus(
+    await updateOrderPayment(
       orderId,
-      {
-        status: newStatus,
-        completedAt,
-        pickedUpAt,
-      },
+      paymentMethod,
     );
 
   return {
@@ -502,19 +521,8 @@ export async function changeOrderStatus(
     paymentStatus:
       updatedOrder.payment_status,
     total: Number(updatedOrder.total),
-    receivedAt:
-      updatedOrder.received_at,
-    estimatedDoneAt:
-      updatedOrder.estimated_done_at,
-    completedAt:
-      updatedOrder.completed_at,
-    pickedUpAt:
-      updatedOrder.picked_up_at,
-    paidAt:
-      updatedOrder.paid_at,
-    createdAt:
-      updatedOrder.created_at,
-    updatedAt:
-      updatedOrder.updated_at,
+    paidAt: updatedOrder.paid_at,
+    createdAt: updatedOrder.created_at,
+    updatedAt: updatedOrder.updated_at,
   };
 }
