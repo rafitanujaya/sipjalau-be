@@ -150,13 +150,31 @@ export const getInvoicesSchema = z.object({
 
 
 export const getOrderByIdSchema = z.object({
-  body: z.object({}),
+  params: z.object({
+    id: z
+      .string()
+      .uuid("ID pesanan tidak valid."),
+  }),
+});
+
+export const updateOrderStatusSchema = z.object({
+  body: z.object({
+    status: z.enum(
+      [
+        "sedang_dicuci",
+        "siap_diambil",
+        "sudah_diambil",
+      ],
+      {
+        message:
+          "Status harus berupa sedang_dicuci, siap_diambil, atau sudah_diambil.",
+      },
+    ),
+  }),
 
   params: z.object({
     id: z
       .string()
       .uuid("ID pesanan tidak valid."),
   }),
-
-  query: z.object({}),
 });

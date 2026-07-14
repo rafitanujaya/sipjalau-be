@@ -14,6 +14,8 @@ import {
   findInvoicesByPeriod,
   findOrderById,
   findOrderItemsByOrderId,
+  findOrderStatusById,
+  updateOrderStatus,
 } from "../repositories/order.repository.js";
 
 function generateInvoiceNumber() {
@@ -410,5 +412,109 @@ export async function getOrderDetail(id) {
     },
 
     items: orderItems.map(formatOrderItem),
+  };
+}
+
+const allowedTransitions = {
+  diproses: [
+    "sedang_dicuci",
+  ],
+
+  sedang_dicuci: [
+    "siap_diambil",
+  ],
+
+  siap_diambil: [
+    "sudah_diambil",
+  ],
+
+  sudah_diambil: [],
+};
+
+export async function changeOrderStatus(
+  orderId,
+  newStatus,
+) {
+  const order =
+    await findOrderStatusById(orderId);
+
+  if (!order) {
+    throw new AppError(
+      "Pesanan tidak ditemukan.",
+      404,
+    );
+  }
+
+  if (order.status === newStatus) {
+    throw new AppError(
+      `Pesanan sudah berstatus ${newStatus}.`,
+      409,
+    );
+  }
+
+  const availableTransitions =
+    allowedTransitions[order.status] ?? [];
+
+  if (
+    !availableTransitions.includes(
+      newStatus,
+    )
+  ) {
+    throw new AppError(
+      `Status pesanan tidak dapat diubah dari ${order.status} menjadi ${newStatus}.`,
+      422,
+    );
+  }
+
+  const now = new Date();
+
+  let completedAt =
+    order.completed_at;
+
+  let pickedUpAt =
+    order.picked_up_at;
+
+  if (newStatus === "siap_diambil") {
+    completedAt = now;
+  }
+
+  if (newStatus === "sudah_diambil") {
+    pickedUpAt = now;
+  }
+
+  const updatedOrder =
+    await updateOrderStatus(
+      orderId,
+      {
+        status: newStatus,
+        completedAt,
+        pickedUpAt,
+      },
+    );
+
+  return {
+    id: updatedOrder.id,
+    invoiceNumber:
+      updatedOrder.invoice_number,
+    status: updatedOrder.status,
+    paymentMethod:
+      updatedOrder.payment_method,
+    paymentStatus:
+      updatedOrder.payment_status,
+    total: Number(updatedOrder.total),
+    receivedAt:
+      updatedOrder.received_at,
+    estimatedDoneAt:
+      updatedOrder.estimated_done_at,
+    completedAt:
+      updatedOrder.completed_at,
+    pickedUpAt:
+      updatedOrder.picked_up_at,
+    paidAt:
+      updatedOrder.paid_at,
+    createdAt:
+      updatedOrder.created_at,
+    updatedAt:
+      updatedOrder.updated_at,
   };
 }

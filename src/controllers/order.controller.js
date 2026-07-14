@@ -77,3 +77,22 @@ export async function handleGetOrderById(req, res, next) {
     next(error);
   }
 }
+
+export async function handleUpdateOrderStatus(req, res, next) {
+  try {
+    const order = await changeOrderStatus(
+      req.validated.params.id,
+      req.validated.body.status,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Status pesanan berhasil diperbarui.",
+      data: {
+        order,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}

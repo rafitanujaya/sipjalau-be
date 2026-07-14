@@ -144,59 +144,63 @@ export async function createOrderItem(
 }
 
 export async function findAvailableOrders(db = pool) {
-  console.time("findAvailableOrders");
+  const result = await db.query(`
+    SELECT
+      o.id,
+      o.invoice_number,
+      o.status,
+      o.payment_method,
+      o.payment_status,
+      o.total,
+      o.notes,
+      o.received_at,
+      o.estimated_done_at,
+      o.completed_at,
+      o.paid_at,
+      o.created_at,
+      o.updated_at,
 
-  try {
-    const result = await db.query(`
-      SELECT
-        o.id,
-        o.invoice_number,
-        o.status,
-        o.payment_method,
-        o.payment_status,
-        o.total,
-        o.notes,
-        o.received_at,
-        o.estimated_done_at,
-        o.completed_at,
-        o.paid_at,
-        o.created_at,
-        o.updated_at,
+      c.id AS customer_id,
+      c.fullname AS customer_name,
+      c.phone_number AS customer_phone_number,
 
-        c.id AS customer_id,
-        c.fullname AS customer_name,
-        c.phone_number AS customer_phone_number,
+      st.id AS cashier_id,
+      st.name AS cashier_name,
 
-        s.id AS cashier_id,
-        s.name AS cashier_name
+      (
+        SELECT sv.turnaround_type
+        FROM order_items AS oi
+        INNER JOIN services AS sv
+          ON sv.id = oi.service_id
+        WHERE oi.order_id = o.id
+        LIMIT 1
+      ) AS turnaround_type
 
-      FROM orders o
+    FROM orders AS o
 
-      INNER JOIN customers c
-        ON c.id = o.customer_id
+    INNER JOIN customers AS c
+      ON c.id = o.customer_id
 
-      INNER JOIN staff s
-        ON s.id = o.cashier_id
+    INNER JOIN staff AS st
+      ON st.id = o.cashier_id
 
-      WHERE o.status IN (
-        'diproses',
-        'sedang_dicuci',
-        'siap_diambil'
-      )
+    WHERE o.status IN (
+      'diproses',
+      'sedang_dicuci',
+      'siap_diambil'
+    )
 
-      ORDER BY
-        CASE o.status
-          WHEN 'siap_diambil' THEN 1
-          WHEN 'sedang_dicuci' THEN 2
-          WHEN 'diproses' THEN 3
-        END,
-        o.received_at ASC
-    `);
+    ORDER BY
+      CASE o.status
+        WHEN 'siap_diambil' THEN 1
+        WHEN 'sedang_dicuci' THEN 2
+        WHEN 'diproses' THEN 3
+        ELSE 4
+      END,
+      o.received_at ASC
+  `);
 
-    return result.rows;
-  } finally {
-    console.timeEnd("findAvailableOrders");
-  }
+  return result.rows;
 }
 
 export async function findInvoicesByPeriod(
@@ -334,4 +338,70 @@ export async function findOrderItemsByOrderId(
   );
 
   return result.rows;
+}
+
+export async function findOrderStatusById(
+  id,
+  db = pool,
+) {
+  const result = await db.query(
+    `
+      SELECT
+        id,
+        status,
+        payment_status,
+        completed_at,
+        picked_up_at
+      FROM orders
+      WHERE id = $1
+      LIMIT 1
+    `,
+    [id],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function updateOrderStatus(
+  id,
+  {
+    status,
+    completedAt,
+    pickedUpAt,
+  },
+  db = pool,
+) {
+  const result = await db.query(
+    `
+      UPDATE orders
+      SET
+        status = $2,
+        completed_at = $3,
+        picked_up_at = $4,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING
+        id,
+        invoice_number,
+        status,
+        payment_method,
+        payment_status,
+        total,
+        received_at,
+        estimated_done_at,
+        completed_at,
+        picked_up_at,
+        paid_at,
+        created_at,
+        updated_at
+    `,
+    [
+      id,
+      status,
+      completedAt,
+      pickedUpAt,
+    ],
+  );
+
+  return result.rows[0] ?? null;
 }
