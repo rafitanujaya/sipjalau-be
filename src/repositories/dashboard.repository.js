@@ -14,22 +14,27 @@ export async function findDashboardSummary(
       )::integer AS total_running_orders,
 
       COUNT(*) FILTER (
-        WHERE status = 'sudah_diambil'
-          AND picked_up_at >=
+        WHERE status IN (
+          'diproses',
+          'sedang_dicuci',
+          'siap_diambil'
+        )
+
+        AND estimated_done_at >=
+          DATE_TRUNC(
+            'day',
+            CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Jakarta'
+          ) AT TIME ZONE 'Asia/Jakarta'
+
+        AND estimated_done_at <
+          (
             DATE_TRUNC(
               'day',
               CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Jakarta'
-            ) AT TIME ZONE 'Asia/Jakarta'
-
-          AND picked_up_at <
-            (
-              DATE_TRUNC(
-                'day',
-                CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Jakarta'
-              )
-              + INTERVAL '1 day'
-            ) AT TIME ZONE 'Asia/Jakarta'
-      )::integer AS total_completed_today
+            )
+            + INTERVAL '1 day'
+          ) AT TIME ZONE 'Asia/Jakarta'
+      )::integer AS total_due_today
 
     FROM orders
   `);
