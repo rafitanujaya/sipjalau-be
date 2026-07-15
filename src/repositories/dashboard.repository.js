@@ -37,9 +37,7 @@ export async function findDashboardSummary(
   return result.rows[0];
 }
 
-export async function findOrdersDueToday(
-  db = pool,
-) {
+export async function findOrdersDueToday(db = pool) {
   const result = await db.query(`
     SELECT
       o.id,
@@ -74,7 +72,14 @@ export async function findOrdersDueToday(
         + INTERVAL '1 day'
       ) AT TIME ZONE 'Asia/Jakarta'
 
-    ORDER BY o.estimated_done_at ASC
+    ORDER BY
+      CASE o.status
+        WHEN 'siap_diambil' THEN 1
+        WHEN 'sedang_dicuci' THEN 2
+        WHEN 'diproses' THEN 3
+        ELSE 4
+      END,
+      o.estimated_done_at ASC
   `);
 
   return result.rows;
