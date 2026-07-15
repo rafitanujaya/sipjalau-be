@@ -4,6 +4,7 @@ import {
   getAvailableOrders,
   getInvoices,
   getOrderDetail,
+  payOrder,
 } from "../services/order.service.js";
 
 export async function handleCreateOrder(req, res, next) {
